@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>オファーメール生成 | 次の灯株式会社</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display&display=swap');
+:root {
+  --bg:#F7F5F0;--surface:#FFFFFF;--surface2:#F0EDE6;--border:#E2DDD5;
+  --text:#1A1816;--text-muted:#7A7470;--accent:#2D5A3D;--accent-light:#E8F0EA;
+  --radius:10px;--shadow:0 2px 12px rgba(0,0,0,0.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.7;}
+header{background:var(--accent);color:#fff;padding:1rem 2rem;display:flex;align-items:center;gap:1rem;}
+header h1{font-family:'DM Serif Display',serif;font-size:18px;font-weight:400;}
+header span{font-size:12px;opacity:0.7;font-weight:300;}
+.webinar-setting{display:flex;align-items:center;gap:0.5rem;margin-left:auto;}
+.webinar-setting label{font-size:11px;opacity:0.8;white-space:nowrap;}
+.webinar-setting select{font-family:'Noto Sans JP',sans-serif;font-size:12px;padding:5px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:5px;background:rgba(255,255,255,0.15);color:#fff;outline:none;cursor:pointer;}
+.webinar-setting select option{background:#2D5A3D;color:#fff;}
+.layout{display:grid;grid-template-columns:400px 1fr;gap:1.5rem;padding:1.5rem 2rem;max-width:1500px;margin:0 auto;align-items:start;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow);}
+.panel-title{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border);}
+.upload-area{border:1.5px dashed var(--border);border-radius:var(--radius);padding:1.25rem;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface2);margin-bottom:0.75rem;}
+.upload-area:hover,.upload-area.dragover{border-color:var(--accent);background:var(--accent-light);}
+.upload-icon{font-size:24px;margin-bottom:0.25rem;}
+.upload-area p{font-size:11px;color:var(--text-muted);}
+.upload-area strong{font-size:12px;color:var(--text);}
+#fileInput{display:none;}
+.bulk-bar{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;}
+.bulk-bar span{font-size:12px;color:var(--text-muted);}
+.candidate-list{display:flex;flex-direction:column;gap:0.4rem;max-height:calc(100vh - 340px);overflow-y:auto;}
+.candidate-card{border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.9rem;cursor:pointer;transition:all 0.15s;background:var(--surface);display:flex;align-items:center;gap:0.6rem;}
+.candidate-card:hover,.candidate-card.active{border-color:var(--accent);background:var(--accent-light);}
+.candidate-card.active{border-width:1.5px;}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;}
+.cand-info{flex:1;min-width:0;}
+.cand-name{font-weight:500;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cand-sub{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.status-badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;flex-shrink:0;}
+.status-done{background:var(--accent-light);color:var(--accent);}
+.status-ready{background:#FFF3E0;color:#E65100;}
+.status-generating{background:#FFF8E1;color:#F57F17;}
+.status-error{background:#FFEBEE;color:#C62828;}
+.right-panel{display:flex;flex-direction:column;gap:1rem;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.75rem;}
+.info-field label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px;font-weight:500;}
+.info-field .val{font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;min-height:28px;}
+.position-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;}
+.position-row label{font-size:11px;color:var(--text-muted);font-weight:500;white-space:nowrap;}
+select{flex:1;font-family:'Noto Sans JP',sans-serif;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;}
+select:focus{outline:none;border-color:var(--accent);}
+.suggest-badge{font-size:10px;background:#FFF8E1;color:#F57F17;padding:3px 8px;border-radius:20px;border:1px solid #FFE082;white-space:nowrap;}
+.mail-output{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow);}
+.mail-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border);}
+.mail-title{font-size:13px;font-weight:500;color:var(--text-muted);}
+.mail-body{font-size:13px;line-height:1.9;white-space:pre-wrap;color:var(--text);min-height:200px;}
+.mail-body.placeholder{display:flex;align-items:center;justify-content:center;min-height:240px;flex-direction:column;gap:0.5rem;}
+.highlight-insert{background:#FFF9C4;border-radius:3px;padding:0 2px;}
+.btn{font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:500;padding:8px 16px;border-radius:6px;cursor:pointer;transition:all 0.15s;border:none;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#1e4029;}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-bulk{background:#1a3d6b;color:#fff;}
+.btn-bulk:hover{background:#122d50;}
+.btn-bulk:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-copy{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-copy:hover{background:var(--border);}
+.btn-row{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;}
+.loading-bar{display:none;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:var(--accent-light);border:1px solid #C8DEC9;border-radius:6px;font-size:12px;color:var(--accent);}
+.loading-bar.show{display:flex;}
+.spinner{width:14px;height:14px;border:2px solid #C8DEC9;border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.bulk-progress{display:none;margin-top:0.75rem;background:var(--surface2);border-radius:8px;overflow:hidden;height:8px;}
+.bulk-progress.show{display:block;}
+.bulk-progress-bar{height:100%;background:var(--accent);transition:width 0.3s;width:0%;}
+.bulk-status{font-size:11px;color:var(--text-muted);margin-top:4px;display:none;}
+.bulk-status.show{display:block;}
+.empty-state{text-align:center;padding:2rem;color:var(--text-muted);}
+.empty-state .big-icon{font-size:36px;margin-bottom:0.75rem;}
+.empty-state p{font-size:13px;}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transform:translateY(8px);transition:all 0.2s;z-index:100;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+@media(max-width:900px){.layout{grid-template-columns:1fr;padding:1rem;}}
+
+/* ドラフト */
+.draft-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow);margin-bottom:1rem;}
+.draft-list{display:flex;flex-direction:column;gap:0.4rem;max-height:160px;overflow-y:auto;}
+.draft-item{display:flex;align-items:center;gap:0.5rem;border:1px solid var(--border);border-radius:6px;padding:0.5rem 0.75rem;cursor:pointer;transition:all 0.15s;background:var(--surface);}
+.draft-item:hover{border-color:var(--accent);background:var(--accent-light);}
+.draft-info{flex:1;min-width:0;}
+.draft-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.draft-meta{font-size:10px;color:var(--text-muted);}
+.draft-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:0 4px;line-height:1;}
+.draft-del:hover{color:#c62828;}
+.no-draft{font-size:12px;color:var(--text-muted);text-align:center;padding:0.75rem;}
+
+/* テンプレートプレビューモーダル */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.75rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.15);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border);}
+.modal-title{font-size:14px;font-weight:500;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);padding:0 4px;}
+.modal-close:hover{color:var(--text);}
+.preview-tabs{display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1rem;}
+.preview-tab{font-family:'Noto Sans JP',sans-serif;font-size:11px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;color:var(--text-muted);transition:all 0.15s;}
+.preview-tab:hover{border-color:var(--accent);color:var(--accent);}
+.preview-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.preview-body{font-size:13px;line-height:1.9;white-space:pre-wrap;color:var(--text);background:var(--surface2);border-radius:8px;padding:1.25rem;}
+.preview-insert{background:#FFF9C4;border-radius:3px;padding:0 2px;}
+
+/* 保存ボタン */
+.btn-save{background:#f5f0e8;color:var(--text);border:1px solid var(--border);}
+.btn-save:hover{background:var(--border);}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div><h1>オファーメール生成</h1><span>次の灯株式会社 戦略人事室</span></div>
+  <div class="webinar-setting">
+    <button class="btn btn-save" onclick="openPreview()" style="font-size:12px;padding:5px 12px;">📋 テンプレート確認</button>
+    <button class="btn btn-save" onclick="clearStorage()" style="font-size:12px;padding:5px 12px;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);">🗑️ データ初期化</button>
+    <label style="margin-left:0.75rem;">CEOウェビナー日程</label>
+    <select id="webinarDate" onchange="updateFooter()">
+      <option value="5/7(木) 17:00〜18:30（JST）">5/7(木) 17:00〜18:30</option>
+      <option value="5/20(水) 17:00〜18:30（JST）">5/20(水) 17:00〜18:30</option>
+      <option value="6/4(木) 17:00〜18:30（JST）">6/4(木) 17:00〜18:30</option>
+      <option value="6/15(月) 17:00〜18:30（JST）">6/15(月) 17:00〜18:30</option>
+      <option value="7/3(金) 17:00〜18:30（JST）">7/3(金) 17:00〜18:30</option>
+    </select>
+  </div>
+</header>
+
+<div class="layout">
+  <div>
+    <div class="panel">
+      <div class="panel-title">候補者ファイル読み込み</div>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📂</div>
+        <strong>ファイルをドロップ または クリック</strong>
+        <p>PDF・Excel（.xlsx/.xls）対応</p>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls,.csv">
+      <div class="bulk-progress" id="readProgress" style="margin-bottom:4px;"><div class="bulk-progress-bar" id="readProgressBar"></div></div>
+      <div class="bulk-status" id="readStatus"></div>
+      <div class="bulk-bar" id="bulkBar" style="display:none;">
+        <button class="btn btn-bulk" id="bulkBtn" onclick="bulkGenerate()">⚡ 全員まとめて生成</button>
+        <span id="bulkCount"></span>
+      </div>
+      <div class="bulk-progress" id="bulkProgress"><div class="bulk-progress-bar" id="bulkProgressBar"></div></div>
+      <div class="bulk-status" id="bulkStatus"></div>
+      <div id="candidateListWrap">
+        <div class="empty-state"><div class="big-icon">👤</div><p>ファイルを読み込むと<br>候補者が表示されます</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel" id="candidateDetail" style="display:none;">
+      <div class="panel-title">候補者情報</div>
+      <div class="info-grid" id="infoGrid"></div>
+      <div class="position-row">
+        <label>ポジション</label>
+        <select id="positionSelect">
+          <option value="">-- 選択してください --</option>
+          <option value="1">①デジタル成長戦略担当</option>
+          <option value="2">②Open Position</option>
+          <option value="3">③ブランド戦略デザイナー</option>
+          <option value="4">④リサイクルバイヤー</option>
+          <option value="5">⑤コンサルティングセールス</option>
+          <option value="6">⑥リビルド技術開発エンジニア</option>
+          <option value="7">⑦生産技術エンジニア</option>
+          <option value="8">⑧データサイエンティスト</option>
+          <option value="9">⑨フルスタックエンジニア</option>
+          <option value="10">⑩レアメタル精錬プロセス開発エンジニア</option>
+        </select>
+        <span class="suggest-badge" id="suggestBadge" style="display:none;">AI提案</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="generateBtn" onclick="generateMail()">✦ メールを生成</button>
+        <button class="btn btn-save" onclick="saveDraft()">💾 ドラフト保存</button>
+      </div>
+    </div>
+
+    <div class="loading-bar" id="loadingBar">
+      <div class="spinner"></div>
+      <span id="loadingText">AIがオファー文を生成中...</span>
+    </div>
+
+    <div class="draft-panel">
+      <div class="panel-title">💾 保存済みドラフト</div>
+      <div class="draft-list" id="draftList"><div class="no-draft">保存なし</div></div>
+    </div>
+
+    <div class="mail-output">
+      <div class="mail-header-row">
+        <span class="mail-title">生成されたメール</span>
+        <button class="btn btn-copy" id="copyBtn" onclick="copyMail()" style="display:none;">📋 コピー</button>
+      </div>
+      <div class="mail-body placeholder" id="mailBody">
+        <div style="font-size:32px;">✉️</div>
+        <p style="color:var(--text-muted);font-size:13px;">候補者を選択してメールを生成してください</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ドラフトパネル（右側下部）は right-panel内に移動済み -->
+
+<!-- テンプレートプレビューモーダル -->
+<div class="modal-overlay" id="previewModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">📋 テンプレートプレビュー</span>
+      <button class="modal-close" onclick="closePreview()">×</button>
+    </div>
+    <div class="preview-tabs" id="previewTabs"></div>
+    <div class="preview-body" id="previewBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+var COMPANY_INFO = "【次の灯株式会社について】\nミッション：「地球の資源を自給するセカイを、実装する」\nブランドステートメント：「めぐる、つなぐ、地球にイイコト」\n岡山発の環境ベンチャー。商用車部品の循環再生・廃部品のレアメタル回収・再資源化を一気通貫で行う。\n創業から平均成長率163%、従業員107名、導入企業5,171社、CO₂削減4,951トン。\n4つの姿勢：①廃棄をゼロにして新たな価値を生み出す ②古い慣習にとらわれず新しい仕組みを創る ③資源の循環を止めない迅速なサービスを届ける ④社会とお客様と共に挑戦し続ける\n求める人物像：難しいテーマにワクワクできる人・きれいごとで終わらない仕事がしたい人・現場から社会を変えることに面白さを感じる人・まだ名前のついていない価値を一緒につくりたい人";
+
+var TEMPLATES = {
+  1:{name:"デジタル成長戦略担当",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、国内外の集客基盤を構築し、事業を力強く牽引する人物像と重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n日本発の循環型インフラを世界へ広げるため、データとクリエイティビティを駆使して国内外の売上を牽引する「デジタル成長戦略担当」は単なる広告運用にとどまらず、事業成長の仕組みを自ら設計・実装していただきます。デジタル集客から海外展開まで、マーケティング全般に幅広く携わります。"},
+  2:{name:"Open Position",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、与えられた役割を待つのではなく、自ら仕事を生み出し事業成長のために泥臭く挑戦できる人間像と重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n既存の「部署」や「職種」といった枠組みに一切とらわれず、領域を横断して自ら役割を創り出す「オープンポジション」の募集です。決められた業務をこなすのではなく、事業を力強く前に進めるためのあらゆるアプローチを自ら開拓していただきます。\n貴方様の強みを活かして次の灯株式会社の未来に貢献してもらいたいと考えています。"},
+  3:{name:"ブランド戦略デザイナー",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、クリエイティブで事業成長を牽引するトップマネジメントに重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n「ブランド戦略デザイナー」は単に見栄えの良いものを作るのではなく、デザインの力で経営視点からテクノロジーや環境課題を読み解き、人々の行動を変えるクリエイティブを生み出していただきます。"},
+  4:{name:"リサイクルバイヤー",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、理想のリサイクルバイヤーの人間像と重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n無価値とされて廃棄されるモノから資源的価値を見抜き、再び社会へ循環させる「リサイクルバイヤー」は都市鉱山を開拓し、「モノを売る」のではなく「価値を買う」ことで新たなビジネスを生み出しています。\n整備工場や解体業者などから、使用済みの自動車部品や金属資源を調達し、営業・調達・資源トレーディングの要素を併せ持つポジションについていただきます。"},
+  5:{name:"コンサルティングセールス",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、海外市場の開拓・グローバル事業を担い、物流企業から公共機関まで幅広い顧客へ価値を提供できる理想のコンサルティングセールスに重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n物流・自動車業界の企業に対し、資源循環ビジネスを通じて「コスト削減」と「CO₂削減」を同時に実現する「コンサルティングセールス」は自社のリビルド部品や回収ネットワークを活用し、大手企業の経営課題の解決を牽引していただきます。"},
+  6:{name:"リビルド技術開発エンジニア",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、私たちの挑む技術課題と重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\nモーターやインバーターなど、まだ再生技術が確立されていない廃部品のリビルド技術をゼロから研究開発する「リビルド技術開発エンジニア」は単に「技術的に直せるか」ではなく、「事業として成立するか」までを見据え、大量廃棄されている部品から新たな資源循環の市場を生み出していただきます。"},
+  7:{name:"生産技術エンジニア",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、私たちの挑む技術課題と重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n再生・資源回収事業において、製造から検査、出荷までの工程全体を俯瞰し、生産ラインの設計・改善を担う「生産技術エンジニア」は工程設計、設備導入、IoTなどを掛け合わせ、現場の課題を「仕組み」で解決し、生産効率・品質を向上させていきます。"},
+  8:{name:"データサイエンティスト",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、経営判断から現場の業務改善まで広く事業をこなせる理想の人間像に重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n回収・精錬・物流・グローバル相場など、資源循環ビジネスに関わるあらゆるデータを統合・分析し、事業の意思決定を支える「データサイエンティスト」は買取価格の最適化や需要予測、物流効率化、CO₂削減効果の可視化などを通じて、適切な事業運営の仕組みづくりを牽引していただきます。"},
+  9:{name:"フルスタックエンジニア",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、私たちのエンジニアチームに必要な人間像と重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n廃バッテリー回収物流・リビルド工場・レアメタル精錬プラントをつなぐ自社基幹システムをゼロから設計・内製開発する「フルスタックエンジニア」は物流・製造・資源循環のデータを一つに統合し、要件定義からアーキテクチャ設計、開発までを一気通貫で牽引していただきます。"},
+  10:{name:"レアメタル精錬プロセス開発エンジニア",body:"プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。\nそのようなお姿が、私たちの挑む技術課題と重なり、ぜひお声がけしたいと思いました。\n\n【オファー理由】\n【OFFER】\n\n不純物が多く組成が不均一なスクラップ原料から、レアメタルを高効率に回収する新しい精錬プロセスの研究開発を担う「レアメタル精錬プロセス開発エンジニア」は研究の仮説立案から、工場チームと連携したスケールアップの実装まで幅広く担っていただきます。"}
+};
+
+function getFooter() {
+  var date = document.getElementById('webinarDate').value || '日程未定';
+  return "少しでもご興味をお持ちいただけましたら、まずは気軽にお話しできる場をご用意しています。\n▼ お気軽にどうぞ\n・個別面談（30分／オンライン・随時受付）\n・CEOウェビナー（一次面接前に必須）\n　└ 次回開催：" + date + "\nどちらからでもご参加いただけます。まずは一度、次の灯の話を聞いてみてください。\n次の灯株式会社　戦略人事室　藤田梨乃";
+}
+
+function updateFooter() {
+  saveToStorage();
+  // 生成済みメールの表示を更新（現在選択中の候補者のみ）
+  if (currentMail && selectedIndex >= 0) {
+    var c = candidates[selectedIndex];
+    if (c && c._generatedMail) {
+      var oldFooterStart = c._generatedMail.lastIndexOf('\n\n少しでもご興味');
+      if (oldFooterStart !== -1) {
+        var newMail = c._generatedMail.slice(0, oldFooterStart) + '\n\n' + getFooter();
+        c._generatedMail = newMail;
+        currentMail = newMail;
+        var html = escapeHtml(newMail);
+        if (c._insertText) {
+          html = html.replace(escapeHtml(c._insertText), '<span class="highlight-insert">' + escapeHtml(c._insertText) + '</span>');
+        }
+        document.getElementById('mailBody').className = 'mail-body';
+        document.getElementById('mailBody').innerHTML = html;
+      }
+    }
+  }
+}
+
+var candidates = [];
+var selectedIndex = -1;
+var currentMail = "";
+var isBulkRunning = false;
+var drafts = [];
+
+// ===== テンプレートプレビュー =====
+function openPreview() {
+  var modal = document.getElementById('previewModal');
+  var tabs = document.getElementById('previewTabs');
+  tabs.innerHTML = '';
+  Object.keys(TEMPLATES).forEach(function(k, i) {
+    var btn = document.createElement('button');
+    btn.className = 'preview-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = '⑤①③④⑥⑦⑧⑨⑩②'.split('')[i] ? ('①②③④⑤⑥⑦⑧⑨⑩'.split('')[i] + ' ' + TEMPLATES[k].name) : TEMPLATES[k].name;
+    btn.onclick = (function(key){ return function(){
+      document.querySelectorAll('.preview-tab').forEach(function(t){ t.classList.remove('active'); });
+      btn.classList.add('active');
+      renderPreviewBody(key);
+    }; })(k);
+    tabs.appendChild(btn);
+  });
+  renderPreviewBody(1);
+  modal.classList.add('show');
+}
+
+function renderPreviewBody(key) {
+  var tmpl = TEMPLATES[key];
+  var sample = tmpl.body
+    .replace('【INSERT】', '<span class="preview-insert">【AIが候補者に合わせて自動生成】</span>')
+    .replace('【OFFER】', '<span class="preview-insert">【AIがオファー理由を自動生成（400〜500字）】</span>');
+  var footer = getFooter().replace(/\n/g, '\n');
+  document.getElementById('previewBody').innerHTML = sample.replace(/\n/g,'<br>') + '<br><br>' + escapeHtml(footer).replace(/<br>/g,'<br>');
+  // footerはescapeしてそのまま
+  document.getElementById('previewBody').innerHTML =
+    sample.replace(/\n/g,'<br>') + '<br><br>' + getFooter().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  // INSERT spanを戻す
+  document.getElementById('previewBody').innerHTML =
+    (tmpl.body.replace('【INSERT】','__INS__').replace('【OFFER】','__OFF__').replace(/\n/g,'<br>'))
+      .replace('__INS__','<span class="preview-insert">【AIが候補者に合わせて自動生成】</span>')
+      .replace('__OFF__','<span class="preview-insert">【AIがオファー理由を自動生成（400〜500字）】</span>')
+    + '<br><br>' + escapeHtml(getFooter()).replace(/\n/g,'<br>');
+}
+
+function closePreview() {
+  document.getElementById('previewModal').classList.remove('show');
+}
+document.getElementById('previewModal').addEventListener('click', function(e){
+  if(e.target === this) closePreview();
+});
+
+// ===== ドラフト保存 =====
+function saveDraft() {
+  if (selectedIndex < 0) { showToast('⚠️ 候補者を選択してください'); return; }
+  var c = candidates[selectedIndex];
+  var posVal = document.getElementById('positionSelect').value;
+  var draft = {
+    id: Date.now(),
+    candidateIdx: selectedIndex,
+    candidateName: c.name || '氏名未記載',
+    positionVal: posVal,
+    positionName: posVal ? TEMPLATES[posVal].name : '未選択',
+    generatedMail: c._generatedMail || '',
+    insertText: c._insertText || '',
+    savedAt: new Date().toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }),
+    snapshot: JSON.parse(JSON.stringify(c))
+  };
+  drafts.unshift(draft);
+  if (drafts.length > 15) drafts.pop();
+  renderDrafts();
+  saveToStorage();
+  showToast('💾 ドラフトを保存しました');
+}
+
+function loadDraft(id) {
+  var d = drafts.find(function(x){ return x.id === id; });
+  if (!d) return;
+  // 候補者リストに復元
+  var exists = false;
+  for (var i = 0; i < candidates.length; i++) {
+    if (candidates[i].name === d.candidateName) { selectedIndex = i; exists = true; break; }
+  }
+  if (!exists) {
+    candidates.unshift(d.snapshot);
+    selectedIndex = 0;
+    renderCandidateList();
+  }
+  var c = candidates[selectedIndex];
+  c._generatedMail = d.generatedMail;
+  c._insertText = d.insertText;
+  c._position = d.positionVal;
+  selectCandidate(selectedIndex);
+  showToast('📂 ドラフトを読み込みました');
+}
+
+function deleteDraft(id) {
+  drafts = drafts.filter(function(x){ return x.id !== id; });
+  renderDrafts();
+  saveToStorage();
+}
+
+function renderDrafts() {
+  var list = document.getElementById('draftList');
+  if (!drafts.length) { list.innerHTML = '<div class="no-draft">保存なし</div>'; return; }
+  list.innerHTML = '';
+  drafts.forEach(function(d) {
+    var item = document.createElement('div');
+    item.className = 'draft-item';
+    item.innerHTML = '<div class="draft-info" onclick="loadDraft(' + d.id + ')">'
+      + '<div class="draft-name">' + d.candidateName + ' — ' + d.positionName + '</div>'
+      + '<div class="draft-meta">' + d.savedAt + (d.generatedMail ? ' ✓生成済' : '') + '</div>'
+      + '</div><button class="draft-del" onclick="event.stopPropagation();deleteDraft(' + d.id + ')">×</button>';
+    list.appendChild(item);
+  });
+}
+
+async function callAPI(body) {
+  var resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    var e = await resp.json().catch(function() { return {}; });
+    throw new Error(e.error ? e.error.message : "HTTP " + resp.status);
+  }
+  return resp.json();
+}
+
+var uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', function() { uploadArea.classList.remove('dragover'); });
+uploadArea.addEventListener('drop', function(e) {
+  e.preventDefault(); uploadArea.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+async function handleFile(file) {
+  var ext = file.name.split('.').pop().toLowerCase();
+  showReadProgress(10, 'ファイルを読み込み中...');
+  if (ext === 'pdf') {
+    await readPDF(file);
+  } else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+    await readExcel(file);
+  } else {
+    hideReadProgress();
+    showToast('⚠️ PDF・Excel・CSV形式のみ対応しています');
+  }
+}
+
+async function readPDF(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+      var base64 = e.target.result.split(',')[1];
+      showReadProgress(40, 'PDFを解析中...');
+      try {
+        showReadProgress(70, 'AIが情報を抽出中...');
+        var data = await callAPI({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 1500,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+              { type: "text", text: "就活生情報をJSONのみで抽出（マークダウン不要）。{\"candidates\":[{\"name\":\"氏名(なければ空)\",\"university\":\"大学\",\"faculty\":\"学部専攻\",\"graduation\":\"卒業予定\",\"skills\":\"スキル資格\",\"experience\":\"経験留学ボランティア\",\"interest\":\"志望関心\",\"selfpr\":\"自己PR強み学生時代\"}]}。複数人全員含める。" }
+            ]
+          }]
+        });
+        showReadProgress(95, '候補者リストを作成中...');
+        var text = data.content.map(function(b) { return b.text || ''; }).join('');
+        // JSON部分のみを確実に抽出
+        var jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('JSONが見つかりませんでした');
+        var parsed = JSON.parse(jsonMatch[0]);
+        candidates = parsed.candidates || [];
+        renderCandidateList();
+        showReadProgress(100, candidates.length + '名の候補者を読み込みました');
+        setTimeout(hideReadProgress, 1500);
+        saveToStorage();
+        showToast('✅ ' + candidates.length + '名の候補者を読み込みました');
+      } catch(err) {
+        console.error(err);
+        hideReadProgress();
+        showToast('⚠️ PDF解析に失敗しました: ' + err.message);
+      }
+      resolve();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function readExcel(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      showReadProgress(50, 'Excelを解析中...');
+      try {
+        var wb = XLSX.read(e.target.result, { type: 'binary' });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        function g(row, key) { return (row[key] || '').toString().trim(); }
+        candidates = rows.map(function(row) {
+          // 氏名
+          var sei = g(row, '氏');
+          var mei = g(row, '名');
+          var name = (sei + ' ' + mei).trim() || g(row, '氏名') || '';
+          // 氏名英語
+          var nameEn = (g(row, '氏（英語)') + ' ' + g(row, '名（英語)')).trim();
+          // 大学・学部
+          var university = g(row, '学歴1:大学');
+          var faculty = [g(row, '学歴1:専攻1'), g(row, '学歴1:専攻2')].filter(Boolean).join(' / ');
+          var degree = g(row, '学歴1:学位');
+          var graduation = g(row, '学歴1:卒業年月');
+          // 職歴
+          var company = g(row, '職歴1:会社名');
+          var industry = g(row, '職歴1:業種');
+          var position = g(row, '職歴1:ポジション1');
+          var posDetail = g(row, '職歴1:ポジション1 詳細');
+          var bizContent = g(row, '職歴1:事業内容');
+          var expYears = g(row, '職歴経験年数');
+          var workStart = g(row, '職歴1:ポジション1 勤務期間（始)');
+          var workEnd = g(row, '職歴1:ポジション1 勤務期間（終)');
+          var careerLevel = g(row, '職歴1:ポジション1 キャリアレベル');
+          // 語学・ビザ
+          var jaLevel = g(row, '日本語レベル');
+          var enLevel = g(row, '英語レベル');
+          var visa = g(row, '労働許可・ビザ');
+          // 自己PR
+          var selfprKeys = Object.keys(row).find(function(k){ return k.indexOf('自己PR') === 0; });
+          var selfpr = selfprKeys ? (row[selfprKeys] || '').toString().trim() : '';
+          // 応募情報
+          var appliedJob = g(row, '応募求人');
+          var event = g(row, 'イベント');
+          // 経験まとめ
+          var experience = [
+            company ? '勤務先：' + company : '',
+            industry ? '業種：' + industry : '',
+            position ? 'ポジション：' + position : '',
+            posDetail ? '詳細：' + posDetail : '',
+            bizContent ? '事業内容：' + bizContent : '',
+            expYears ? '経験年数：' + expYears + '年' : '',
+            (workStart || workEnd) ? '勤務期間：' + workStart + '〜' + workEnd : '',
+            careerLevel ? 'キャリア：' + careerLevel : ''
+          ].filter(Boolean).join(' / ');
+          // スキルまとめ
+          var skills = [
+            jaLevel ? '日本語：' + jaLevel : '',
+            enLevel ? '英語：' + enLevel : '',
+            visa ? 'ビザ：' + visa : '',
+            degree ? '学位：' + degree : ''
+          ].filter(Boolean).join(' / ');
+          return {
+            name: name,
+            nameEn: nameEn,
+            university: university,
+            faculty: faculty,
+            graduation: graduation,
+            skills: skills,
+            experience: experience,
+            interest: appliedJob ? '応募求人：' + appliedJob + (event ? ' / イベント：' + event : '') : '',
+            selfpr: selfpr,
+            raw: JSON.stringify(row),
+            _position: (function() {
+              // G列「応募求人」からポジション番号を自動マッピング
+              if (!appliedJob) return null;
+              var map = {
+                'デジタル成長戦略': 1, 'デジタル成長': 1,
+                'Open': 2, 'open': 2, 'オープン': 2, 'OPEN': 2,
+                'ブランド': 3, 'デザイナー': 3,
+                'リサイクルバイヤー': 4, 'バイヤー': 4,
+                'コンサルティングセールス': 5, 'コンサルティング': 5, 'セールス': 5,
+                'リビルド技術': 6, 'リビルド': 6,
+                '生産技術': 7,
+                'データサイエンティスト': 8, 'データサイエンス': 8,
+                'フルスタック': 9,
+                'レアメタル': 10
+              };
+              for (var key in map) {
+                if (appliedJob.indexOf(key) !== -1) return map[key];
+              }
+              return null;
+            })()
+          };
+        }).filter(function(c) { return c.name || c.nameEn; });
+        showReadProgress(100, candidates.length + '名の候補者を読み込みました');
+        renderCandidateList();
+        setTimeout(hideReadProgress, 1500);
+        saveToStorage();
+        showToast('✅ ' + candidates.length + '名の候補者を読み込みました');
+      } catch(err) {
+        console.error(err);
+        hideReadProgress();
+        showToast('⚠️ Excel解析に失敗しました');
+      }
+      resolve();
+    };
+    reader.readAsBinaryString(file);
+  });
+}
+
+function renderCandidateList() {
+  var wrap = document.getElementById('candidateListWrap');
+  if (!candidates.length) {
+    wrap.innerHTML = '<div class="empty-state"><p>候補者が見つかりませんでした</p></div>';
+    return;
+  }
+  var html = '<div class="candidate-list">';
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    html += '<div class="candidate-card" id="card-' + i + '" onclick="selectCandidate(' + i + ')">';
+    html += '<div class="avatar">' + (c.name || '?').slice(0, 2) + '</div>';
+    html += '<div class="cand-info"><div class="cand-name">' + (c.name || '氏名未記載') + '</div>';
+    html += '<div class="cand-sub">' + (c.university || '') + ' ' + (c.faculty || '') + '</div></div>';
+    html += '<span class="status-badge status-ready" id="badge-' + i + '">未生成</span></div>';
+  }
+  html += '</div>';
+  wrap.innerHTML = html;
+  document.getElementById('bulkBar').style.display = 'flex';
+  document.getElementById('bulkCount').textContent = candidates.length + '名';
+}
+
+async function selectCandidate(idx) {
+  selectedIndex = idx;
+  var cards = document.querySelectorAll('.candidate-card');
+  for (var i = 0; i < cards.length; i++) {
+    cards[i].classList.toggle('active', i === idx);
+  }
+  var c = candidates[idx];
+  document.getElementById('candidateDetail').style.display = 'block';
+  var fields = [
+    {label:'氏名', val: c.name + (c.nameEn ? '　(' + c.nameEn + ')' : '')},
+    {label:'大学・学部', val: [c.university, c.faculty].filter(Boolean).join(' ')},
+    {label:'卒業年月', val: c.graduation},
+    {label:'語学・ビザ', val: c.skills},
+    {label:'職歴・経験', val: c.experience},
+    {label:'自己PR', val: c.selfpr}
+  ];
+  var gridHtml = '';
+  for (var j = 0; j < fields.length; j++) {
+    gridHtml += '<div class="info-field"><label>' + fields[j].label + '</label><div class="val">' + (fields[j].val || '—') + '</div></div>';
+  }
+  document.getElementById('infoGrid').innerHTML = gridHtml;
+
+  if (c._generatedMail) {
+    document.getElementById('mailBody').className = 'mail-body';
+    var html = escapeHtml(c._generatedMail);
+    if (c._insertText) {
+      html = html.replace(escapeHtml(c._insertText), '<span class="highlight-insert">' + escapeHtml(c._insertText) + '</span>');
+    }
+    document.getElementById('mailBody').innerHTML = html;
+    document.getElementById('copyBtn').style.display = 'inline-flex';
+    currentMail = c._generatedMail;
+  } else {
+    document.getElementById('mailBody').className = 'mail-body placeholder';
+    document.getElementById('mailBody').innerHTML = '<div style="font-size:32px;">✉️</div><p style="color:var(--text-muted);font-size:13px;">「メールを生成」を押してください</p>';
+    document.getElementById('copyBtn').style.display = 'none';
+    currentMail = '';
+  }
+
+  if (c._position) {
+    document.getElementById('positionSelect').value = c._position;
+    document.getElementById('suggestBadge').style.display = 'inline';
+  } else {
+    document.getElementById('positionSelect').value = '';
+    document.getElementById('suggestBadge').style.display = 'none';
+    await suggestPosition(c, idx);
+  }
+}
+
+async function suggestPosition(c, idx) {
+  try {
+    var data = await callAPI({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 10,
+      messages: [{
+        role: "user",
+        content: COMPANY_INFO + "\n\n上記の会社の採用担当として、以下の就活生に最も適したポジション番号を1つだけ数字で答えてください。他の文字は一切不要。\nポジション：1=デジタル成長戦略担当,2=Open Position,3=ブランド戦略デザイナー,4=リサイクルバイヤー,5=コンサルティングセールス,6=リビルド技術開発エンジニア,7=生産技術エンジニア,8=データサイエンティスト,9=フルスタックエンジニア,10=レアメタル精錬プロセス開発エンジニア\n候補者：" + JSON.stringify(c)
+      }]
+    });
+    var num = parseInt(data.content[0].text.trim());
+    if (num >= 1 && num <= 10) {
+      if (idx !== undefined) candidates[idx]._position = num;
+      if (selectedIndex === idx) {
+        document.getElementById('positionSelect').value = num;
+        document.getElementById('suggestBadge').style.display = 'inline';
+      }
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function generateMailForCandidate(idx, posVal) {
+  var c = candidates[idx];
+  var tmpl = TEMPLATES[posVal];
+  var candidateInfo = COMPANY_INFO + "\n\n【就活生情報】\n" + JSON.stringify(c, null, 2) + "\n\n【ポジション】" + tmpl.name;
+
+  // ── フェーズ1：抽出・作成（Haiku・高速） ──
+  var phase1Prompt = "あなたは次の灯株式会社の戦略人事室・藤田梨乃です。\n\n" + candidateInfo
+    + "\n\n【フェーズ1：抽出・作成】\n\nSTEP1：就活生の情報からエピソードをすべて列挙する。\nSTEP2：以下の指示に従いINSERTとOFFERの草案を生成する。\n\n■ INSERT（冒頭一文目に挿入される名詞句）\n冒頭の構造は以下の二文で固定されている。\n　一文目：「プロフィールを拝見して、【INSERT】に大きな可能性を感じ、お声がけさせていただきました。」\n　二文目：「そのようなお姿が、〜（ポジション固有の人物像）と重なり、ぜひお声がけしたいと思いました。」\nINSERTは一文目の【INSERT】部分にのみ入る名詞句。二文目との接続は考慮不要。\n・20〜50文字以内\n・必ず名詞句で終える（「〜経験」「〜行動力」「〜姿勢」「〜取り組み」など）\n・「。」で終えない・文章として完結させない\n・「重なる」「重なります」「感じました」「感じ」は絶対に使わない\n・スキル・資格・点数は触れない\n・「ー」「——」禁止\n・優先：1.留学経験 2.ボランティア 3.自己PR・課外活動 4.専攻・研究\n\n■ OFFER\n・一文目：エピソードの要約のみ・20〜30文字程度の短い一文に限定。詳細は絶対に入れない。例：「○○での△△への取り組みに、強く惹かれました。」\n・二文目以降：エピソードの詳細→次の灯との親和性→ポジション適性の順で展開\n・「次の灯の〇〇は〜」のようなポジション説明文は絶対に入れない\n・「私たちが惹かれたのは〜エピソードです」「私たちが注目したのは〜」等の直球表現禁止\n・「ですね」「〜されてきたのですね」等の柔すぎる表現禁止\n・性質の異なる2種類のエピソードを番号・箇条書きなしの自然な流れで盛り込む\n・推測・憶測禁止・就活生情報外のことは書かない\n・450〜480文字厳守・です・ます調\n\n【出力形式】以下のみ\nINSERT:（名詞句）\nOFFER:（文章）";
+
+  var data1 = await callAPI({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 1200,
+    messages: [{ role: "user", content: phase1Prompt }]
+  });
+  var draft = data1.content[0].text.trim();
+
+  // ── フェーズ2：検証・完成（Sonnet・品質保証） ──
+  var phase2Prompt = "以下のオファーメール草案を検証し、問題があれば修正して完成版を出力してください。\n\n【就活生情報】\n" + JSON.stringify(c, null, 2)
+    + "\n\n【草案】\n" + draft
+    + "\n\n【チェック項目】\n・就活生の心に刺さるか・押し付けがましくないか\n・エピソード2種類が自然な流れで入っているか\n・推測・憶測表現がないか\n・「ー」「——」がないか\n・括弧で本文が囲まれていないか\n・体言止めがないか\n・意味のない書き出しになっていないか\n・「」が3回超えていないか\n・OFFERは450〜480文字か\n・OFFERの一文目はエピソード要約のみ20〜30文字程度で収まっているか。詳細が入っていたら分割して二文目以降に移す\n・「ですね」「〜されてきたのですね」等の柔すぎる表現がないか\n・「次の灯の〇〇は〜」のようなポジション説明文がOFFER内に混入していないか\n・「私たちが惹かれたのは〜です」「私たちが注目したのは〜」等の直球表現がないか\n\n【日本語品質・結合ルール（必須）】\n・INSERTは名詞句のみ。文章として完結させない。末尾は「〜経験」「〜行動力」「〜姿勢」「〜取り組み」などの名詞で終えること。\n・「。に」「。が」「。と」など句点直後の不自然な接続が生じていないか確認する。問題があれば「〜という点に」「〜と感じ、」などの適切な接続詞を補い、滑らかな一文に再構築する。\n・定型文の語尾とOFFERの文頭で意味や助詞が重複している場合は自然な日本語にリライトする。\n・敬体（です・ます調）で統一し、ビジネスメールとして違和感のない格調高い表現を選ぶ。\n\n問題なければそのまま・問題があれば修正して出力。文字数カウント・説明など余分な出力は一切しない。\n\n【出力形式】以下のみ\nINSERT:（名詞句）\nOFFER:（文章）";
+
+  var data2 = await callAPI({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1200,
+    messages: [{ role: "user", content: phase2Prompt }]
+  });
+
+  var responseText = data2.content[0].text.trim();
+  var insertMatch = responseText.match(/INSERT[：:]\s*(.+)/);
+  var offerMatch = responseText.match(/OFFER[：:]\s*([\s\S]+)/);
+  var insertText = insertMatch ? insertMatch[1].trim() : '';
+  // 末尾の句点・「重なります」「感じました」「感じ」などを自動除去
+  insertText = insertText.replace(/。$/, '').replace(/、$/, '').trim();
+  insertText = insertText.replace(/(重なります|重なる|感じました|と感じ|と重なり).*$/, '').trim();
+  // 末尾が句点で終わっていたら再度除去
+  insertText = insertText.replace(/[。、]$/, '').trim();
+  var offerText = offerMatch ? offerMatch[1].trim() : '';
+
+  if (offerText.startsWith('(') || offerText.startsWith('（')) {
+    offerText = offerText.replace(/^[(（]/, '').replace(/[)）]\s*$/, '').trim();
+  }
+  offerText = offerText.replace(/\s*---[\s\S]*$/, '').replace(/\s*生成後確認[\s\S]*$/, '').replace(/\s*約\d+文字[\s\S]*$/, '').trim();
+
+  var mailText = tmpl.body.replace('【INSERT】', insertText).replace('【OFFER】', offerText);
+  mailText = mailText + '\n\n' + getFooter();
+
+  candidates[idx]._generatedMail = mailText;
+  candidates[idx]._insertText = insertText;
+  saveToStorage();
+  return { mailText: mailText, insertText: insertText };
+}
+
+async function generateMail() {
+  var posVal = document.getElementById('positionSelect').value;
+  if (!posVal) { showToast('⚠️ ポジションを選択してください'); return; }
+  if (selectedIndex < 0) { showToast('⚠️ 候補者を選択してください'); return; }
+
+  var loading = document.getElementById('loadingBar');
+  var genBtn = document.getElementById('generateBtn');
+  loading.classList.add('show'); genBtn.disabled = true;
+  document.getElementById('mailBody').className = 'mail-body placeholder';
+  document.getElementById('mailBody').innerHTML = '<div style="font-size:32px;">✉️</div><p>フェーズ1：情報を抽出・作成中...</p>';
+  setBadge(selectedIndex, 'generating', '生成中');
+
+  try {
+    var result = await generateMailForCandidate(selectedIndex, posVal);
+    currentMail = result.mailText;
+    document.getElementById('mailBody').className = 'mail-body';
+    var html = escapeHtml(result.mailText);
+    if (result.insertText) {
+      html = html.replace(escapeHtml(result.insertText), '<span class="highlight-insert">' + escapeHtml(result.insertText) + '</span>');
+    }
+    document.getElementById('mailBody').innerHTML = html;
+    document.getElementById('copyBtn').style.display = 'inline-flex';
+    setBadge(selectedIndex, 'done', '生成済');
+  } catch(err) {
+    console.error(err);
+    showToast('⚠️ 生成に失敗しました: ' + err.message);
+    setBadge(selectedIndex, 'error', 'エラー');
+  } finally {
+    loading.classList.remove('show'); genBtn.disabled = false;
+  }
+}
+
+async function bulkGenerate() {
+  if (isBulkRunning) return;
+  isBulkRunning = true;
+  var bulkBtn = document.getElementById('bulkBtn');
+  bulkBtn.disabled = true;
+  var progress = document.getElementById('bulkProgress');
+  var progressBar = document.getElementById('bulkProgressBar');
+  var statusEl = document.getElementById('bulkStatus');
+  progress.classList.add('show'); statusEl.classList.add('show');
+
+  var total = candidates.length;
+  var done = 0;
+  var errors = 0;
+
+  // ポジション未決定を並列で一括取得
+  var needsPosition = [];
+  for (var i = 0; i < candidates.length; i++) {
+    if (!candidates[i]._position) needsPosition.push(i);
+  }
+  if (needsPosition.length > 0) {
+    statusEl.textContent = 'ポジションを分析中... (' + needsPosition.length + '名)';
+    for (var pi = 0; pi < needsPosition.length; pi++) {
+      await suggestPosition(candidates[needsPosition[pi]], needsPosition[pi]);
+      if (pi < needsPosition.length - 1) await sleep(500);
+    }
+  }
+
+  // メール生成を順番に処理
+  for (var j = 0; j < total; j++) {
+    var posVal = candidates[j]._position || 2;
+    var name = candidates[j].name || '氏名未記載';
+    statusEl.textContent = '生成中... ' + (j + 1) + '/' + total + '名 (' + name + ')';
+    setBadge(j, 'generating', '生成中');
+
+    try {
+      var result = await generateMailForCandidate(j, posVal);
+      setBadge(j, 'done', '生成済');
+      done++;
+
+      if (selectedIndex === j) {
+        currentMail = result.mailText;
+        document.getElementById('mailBody').className = 'mail-body';
+        var html = escapeHtml(result.mailText);
+        if (result.insertText) {
+          html = html.replace(escapeHtml(result.insertText), '<span class="highlight-insert">' + escapeHtml(result.insertText) + '</span>');
+        }
+        document.getElementById('mailBody').innerHTML = html;
+        document.getElementById('copyBtn').style.display = 'inline-flex';
+      }
+    } catch(err) {
+      console.error(err);
+      setBadge(j, 'error', 'エラー');
+      errors++;
+    }
+
+    progressBar.style.width = (((j + 1) / total) * 100) + '%';
+    if (j < total - 1) await sleep(1200);
+  }
+
+  statusEl.textContent = '完了！ ' + done + '名生成済' + (errors > 0 ? ' / ' + errors + '名エラー' : '');
+  showToast('✅ ' + done + '名のメールを生成しました');
+  isBulkRunning = false;
+  bulkBtn.disabled = false;
+}
+
+function showReadProgress(pct, msg) {
+  var p = document.getElementById('readProgress');
+  var bar = document.getElementById('readProgressBar');
+  var st = document.getElementById('readStatus');
+  p.classList.add('show'); st.classList.add('show');
+  bar.style.width = pct + '%';
+  st.textContent = msg;
+}
+
+function hideReadProgress() {
+  var p = document.getElementById('readProgress');
+  var bar = document.getElementById('readProgressBar');
+  var st = document.getElementById('readStatus');
+  p.classList.remove('show'); st.classList.remove('show');
+  bar.style.width = '0%';
+  st.textContent = '';
+}
+
+function setBadge(idx, type, text) {
+  var badge = document.getElementById('badge-' + idx);
+  if (!badge) return;
+  badge.className = 'status-badge status-' + type;
+  badge.textContent = text;
+}
+
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+function copyMail() {
+  if (!currentMail) return;
+  navigator.clipboard.writeText(currentMail).then(function() { showToast('✅ コピーしました'); });
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function showToast(msg, duration) {
+  duration = duration || 3000;
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, duration);
+}
+
+// ===== localStorage 永続化 =====
+var LS_CANDIDATES = 'offerapp_candidates';
+var LS_DRAFTS     = 'offerapp_drafts';
+var LS_WEBINAR    = 'offerapp_webinar';
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_CANDIDATES, JSON.stringify(candidates));
+    localStorage.setItem(LS_DRAFTS,     JSON.stringify(drafts));
+    localStorage.setItem(LS_WEBINAR,    document.getElementById('webinarDate').value);
+  } catch(e) { console.warn('localStorage save failed:', e); }
+}
+
+function loadFromStorage() {
+  try {
+    var c = localStorage.getItem(LS_CANDIDATES);
+    var d = localStorage.getItem(LS_DRAFTS);
+    var w = localStorage.getItem(LS_WEBINAR);
+    if (c) {
+      candidates = JSON.parse(c);
+      if (candidates.length) {
+        renderCandidateList();
+        showToast('📂 前回の候補者データを復元しました（' + candidates.length + '名）');
+      }
+    }
+    if (d) {
+      drafts = JSON.parse(d);
+      renderDrafts();
+    }
+    if (w) {
+      document.getElementById('webinarDate').value = w;
+    }
+  } catch(e) { console.warn('localStorage load failed:', e); }
+}
+
+function clearStorage() {
+  if (!confirm('保存された候補者データとドラフトをすべて削除しますか？\nこの操作は元に戻せません。')) return;
+  localStorage.removeItem(LS_CANDIDATES);
+  localStorage.removeItem(LS_DRAFTS);
+  localStorage.removeItem(LS_WEBINAR);
+  candidates = []; drafts = []; selectedIndex = -1; currentMail = '';
+  renderCandidateList();
+  renderDrafts();
+  document.getElementById('candidateDetail').style.display = 'none';
+  document.getElementById('mailBody').className = 'mail-body placeholder';
+  document.getElementById('mailBody').innerHTML = '<div style="font-size:32px;">✉️</div><p style="color:var(--text-muted);font-size:13px;">候補者を選択してメールを生成してください</p>';
+  document.getElementById('copyBtn').style.display = 'none';
+  document.getElementById('bulkBar').style.display = 'none';
+  showToast('🗑️ データをすべて削除しました');
+}
+
+// 起動時に復元
+loadFromStorage();
+</script>
+</body>
+</html>
